@@ -1,0 +1,162 @@
+@startuml
+!theme plain
+
+entity "User" as User {
+    * user_id : INT <<PK>>
+    --
+    first_name : VARCHAR(50)
+    last_name : VARCHAR(50)
+    email : VARCHAR(100)
+    password_hash : VARCHAR(255)
+    phone : VARCHAR(20)
+    role : ENUM('customer','admin','manager','support')
+    is_active : BOOLEAN
+    created_at : DATETIME
+    updated_at : DATETIME
+}
+
+entity "Address" as Address {
+    * address_id : INT <<PK>>
+    --
+    user_id : INT <<FK>>
+    country : VARCHAR(50)
+    city : VARCHAR(50)
+    street : VARCHAR(100)
+    postal_code : VARCHAR(20)
+    is_default : BOOLEAN
+}
+
+entity "Category" as Category {
+    * category_id : INT <<PK>>
+    --
+    name : VARCHAR(100)
+    description : VARCHAR(255)
+    parent_id : INT <<FK>>
+}
+
+entity "Product" as Product {
+    * product_id : INT <<PK>>
+    --
+    category_id : INT <<FK>>
+    name : VARCHAR(100)
+    description : VARCHAR(500)
+    price : DECIMAL(10,2)
+    discount_percent : DECIMAL(5,2)
+    stock : INT
+    status : ENUM('active','hidden','out_of_stock')
+    image_url : VARCHAR(255)
+    created_at : DATETIME
+    updated_at : DATETIME
+}
+
+entity "Cart" as Cart {
+    * cart_id : INT <<PK>>
+    --
+    user_id : INT <<FK>>
+    created_at : DATETIME
+    is_active : BOOLEAN
+}
+
+entity "CartItem" as CartItem {
+    * cart_item_id : INT <<PK>>
+    --
+    cart_id : INT <<FK>>
+    product_id : INT <<FK>>
+    quantity : INT
+    added_at : DATETIME
+}
+
+entity "Order" as Order {
+    * order_id : INT <<PK>>
+    --
+    user_id : INT <<FK>>
+    address_id : INT <<FK>>
+    cart_id : INT <<FK>>
+    total_amount : DECIMAL(10,2)
+    status : ENUM('pending','paid','shipped','delivered','cancelled')
+    created_at : DATETIME
+    shipped_at : DATETIME
+    delivered_at : DATETIME
+}
+
+entity "Payment" as Payment {
+    * payment_id : INT <<PK>>
+    --
+    order_id : INT <<FK>>
+    method : ENUM('card','paypal','cash_on_delivery')
+    amount : DECIMAL(10,2)
+    status : ENUM('pending','success','failed','refunded')
+    transaction_id : VARCHAR(100)
+    created_at : DATETIME
+}
+
+entity "Delivery" as Delivery {
+    * delivery_id : INT <<PK>>
+    --
+    order_id : INT <<FK>>
+    courier : VARCHAR(50)
+    tracking_number : VARCHAR(100)
+    status : ENUM('preparing','in_transit','delivered','returned')
+    updated_at : DATETIME
+}
+
+entity "Review" as Review {
+    * review_id : INT <<PK>>
+    --
+    user_id : INT <<FK>>
+    product_id : INT <<FK>>
+    rating : INT
+    comment : VARCHAR(500)
+    created_at : DATETIME
+    is_approved : BOOLEAN
+}
+
+entity "Wishlist" as Wishlist {
+    * wishlist_id : INT <<PK>>
+    --
+    user_id : INT <<FK>>
+    product_id : INT <<FK>>
+    added_at : DATETIME
+}
+
+entity "Discount" as Discount {
+    * discount_id : INT <<PK>>
+    --
+    code : VARCHAR(50)
+    type : ENUM('percent','fixed')
+    value : DECIMAL(10,2)
+    valid_from : DATETIME
+    valid_to : DATETIME
+    is_active : BOOLEAN
+    product_id : INT <<FK>>
+    order_id : INT <<FK>>
+}
+
+' ---------------- Relationships ----------------
+
+User ||--o{ Address : has
+User ||--o{ Cart : owns
+User ||--o{ Wishlist : saves
+User ||--o{ Review : writes
+User ||--o{ Order : places
+
+Address ||--o{ Order : used_for
+
+Order ||--o{ Payment : has
+Order ||--|| Delivery : tracked_by
+
+Cart ||--o{ CartItem : contains
+Cart ||--|| Order : converted_to
+
+CartItem }o--|| Product : refers_to
+
+Review }o--|| Product : about
+
+Wishlist }o--|{ Product : includes
+
+Category ||--o{ Product : contains
+Category ||--o{ Category : subcategory_of
+
+Discount }o--|| Product : may_apply_to
+Discount }o--|| Order : may_apply_to
+@enduml
