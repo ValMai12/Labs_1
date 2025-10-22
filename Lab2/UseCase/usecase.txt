@@ -1,0 +1,128 @@
+@startuml
+!theme blueprint
+left to right direction
+
+hide circle
+skinparam backgroundColor White
+skinparam package {
+  BorderColor Transparent
+  BackgroundColor Transparent
+}
+skinparam usecase {
+  BackgroundColor White
+  BorderColor Black
+  ArrowColor Black
+  FontColor Black
+  FontSize 13
+  BorderThickness 1.5
+  RoundCorner 15
+}
+skinparam actor {
+  FontSize 13
+  FontColor Black
+  BackgroundColor #DDDDDD
+  BorderColor Black
+}
+skinparam Arrow {
+  Color Black
+}
+skinparam shadowing false
+
+' --- Actors ---
+actor "Customer" as Cust
+actor "Admin" as Admin
+actor "Manager" as Mgr
+actor "Support" as Sup
+
+actor "Payment Gateway" as PaySys <<external>>
+actor "Delivery Service API" as DelSys <<external>>
+actor "Email Notification System" as MailSys <<external>>
+
+' --- Package with Use Cases ---
+package {
+
+  ' --- Customer Use Cases ---
+  usecase "Register / Log In" as UC_Auth
+  usecase "Browse Products" as UC_Browse
+  usecase "Search Products" as UC_Search
+  usecase "Filter / Sort Products" as UC_Filter
+  usecase "View Product Details" as UC_View
+  usecase "Add to Cart" as UC_AddCart
+  usecase "View Cart" as UC_ViewCart
+  usecase "Checkout" as UC_Checkout
+  usecase "Select Address / Delivery" as UC_SelectDelivery
+  usecase "Apply Discount" as UC_Discount
+  usecase "Make Payment" as UC_Pay
+  usecase "Track Order" as UC_Track
+  usecase "Leave Review" as UC_Review
+  usecase "Manage Wishlist" as UC_Wishlist
+
+  ' --- Admin Use Cases ---
+  usecase "Manage Users & Roles" as UC_AdminUsers
+  usecase "Manage Products / Categories" as UC_AdminProducts
+  usecase "Manage Discounts / Coupons" as UC_AdminDiscounts
+  usecase "Moderate Reviews" as UC_AdminReviews
+  usecase "View Sales Analytics" as UC_AdminAnalytics
+
+  ' --- Manager Use Cases ---
+  usecase "Confirm Order" as UC_MgrConfirm
+  usecase "Prepare Shipment" as UC_MgrPrepare
+  usecase "Update Delivery Status" as UC_MgrUpdate
+
+  ' --- Support Use Cases ---
+  usecase "Process Refund" as UC_SupRefund
+  usecase "Cancel Order" as UC_SupCancel
+  usecase "Respond to Customer Queries" as UC_SupHelp
+}
+
+' --- Associations ---
+Cust --> UC_Auth
+Cust --> UC_Browse
+Cust --> UC_Search
+Cust --> UC_Filter
+Cust --> UC_View
+Cust --> UC_AddCart
+Cust --> UC_ViewCart
+Cust --> UC_Checkout
+Cust --> UC_Wishlist
+Cust --> UC_Track
+Cust --> UC_Review
+
+Admin --> UC_AdminUsers
+Admin --> UC_AdminProducts
+Admin --> UC_AdminDiscounts
+Admin --> UC_AdminReviews
+Admin --> UC_AdminAnalytics
+
+Mgr --> UC_MgrConfirm
+Mgr --> UC_MgrPrepare
+Mgr --> UC_MgrUpdate
+
+Sup --> UC_SupRefund
+Sup --> UC_SupCancel
+Sup --> UC_SupHelp
+
+PaySys --> UC_Pay
+DelSys --> UC_MgrUpdate
+DelSys --> UC_Track
+MailSys --> UC_Checkout
+MailSys --> UC_SupHelp
+
+' --- Includes and Extends ---
+UC_Browse ..> UC_Filter : <<include>>
+UC_Search ..> UC_Filter : <<include>>
+UC_View ..> UC_AddCart : <<include>>
+
+UC_Checkout ..> UC_SelectDelivery : <<include>>
+UC_Checkout ..> UC_Discount : <<include>>
+UC_Checkout ..> UC_Pay : <<include>>
+
+UC_Track ..> UC_MgrUpdate : <<use>>
+
+UC_Review ..> UC_Pay : <<extend>>
+
+UC_MgrConfirm ..> UC_MgrPrepare : <<include>>
+UC_SupRefund ..> UC_Pay : <<extend>>
+UC_SupCancel ..> UC_Checkout : <<extend>>
+
+@enduml
