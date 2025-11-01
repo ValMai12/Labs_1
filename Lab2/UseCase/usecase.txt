@@ -34,10 +34,6 @@ actor "Admin" as Admin
 actor "Manager" as Mgr
 actor "Support" as Sup
 
-actor "Payment Gateway" as PaySys <<external>>
-actor "Delivery Service API" as DelSys <<external>>
-actor "Email Notification System" as MailSys <<external>>
-
 ' --- Package with Use Cases ---
 package {
 
@@ -101,12 +97,6 @@ Mgr --> UC_MgrUpdate
 Sup --> UC_SupRefund
 Sup --> UC_SupCancel
 Sup --> UC_SupHelp
-
-PaySys --> UC_Pay
-DelSys --> UC_MgrUpdate
-DelSys --> UC_Track
-MailSys --> UC_Checkout
-MailSys --> UC_SupHelp
 
 ' --- Includes and Extends ---
 UC_Browse ..> UC_Filter : <<include>>
