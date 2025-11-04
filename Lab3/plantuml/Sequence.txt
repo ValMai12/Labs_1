@@ -1,0 +1,243 @@
+@startuml
+
+actor "User" as User
+
+participant "Web Interface" as Web
+participant "ProductService" as PS
+participant "CartService" as CS
+participant "OrderService" as OS
+participant "PaymentService" as PayS
+participant "DeliveryService" as DS
+participant "ReviewService" as RS
+database "Database" as DB
+
+== User visits site ==
+User -> Web : Open store homepage
+activate Web
+
+Web -> PS : getFeaturedProducts(limit=10)
+activate PS
+
+PS -> DB : SELECT * FROM Products LIMIT 10
+activate DB
+DB --> PS : featuredProducts[]
+deactivate DB
+
+PS --> Web : featuredProducts[]
+deactivate PS
+
+Web -> User : renderHomepage(featuredProducts[])
+deactivate Web
+
+== User searches for product ==
+User -> Web : search product
+activate Web
+
+Web -> PS : searchProducts(query="...")
+activate PS
+
+PS -> DB : SELECT * FROM Products WHERE name LIKE '%query%' OR category LIKE '%query%'
+activate DB
+DB --> PS : products[]
+deactivate DB
+
+PS --> Web : products[]
+deactivate PS
+
+Web --> User : displayProducts(products[])
+deactivate Web
+
+== User selects product ==
+User -> Web : select product
+activate Web
+
+Web -> PS : getProductDetails(product_id)
+activate PS
+
+PS -> DB : SELECT * FROM Products WHERE id = product_id
+activate DB
+DB --> PS : productDetails
+deactivate DB
+
+PS --> Web : productDetails
+deactivate PS
+
+alt productDetails.stock > 0
+Web --> User : showProductDetails(productDetails)
+else Product out of stock
+Web --> User : showOutOfStockMessage()
+end
+deactivate Web
+
+== User adds product to cart ==
+User -> Web : add to cart
+activate Web
+
+Web -> CS : addItem(cart_id, product_id, qty=1)
+activate CS
+
+CS -> DB : UPSERT INTO CartItems(cart_id, product_id, qty) VALUES (...)
+activate DB
+DB --> CS : success
+deactivate DB
+
+CS -> DB : SELECT * FROM CartItems ci JOIN Products p ON ci.product_id = p.id WHERE ci.cart_id = ...
+activate DB
+DB --> CS : cartContents[]
+deactivate DB
+
+CS --> Web : cartContents[]
+deactivate CS
+
+Web --> User : showCart(cartContents[])
+deactivate Web
+
+== User creates order (Checkout) ==
+User -> Web : checkout
+activate Web
+
+Web -> OS : createOrder(cart_id, user_info)
+activate OS
+
+OS -> CS : getCartItems(cart_id)
+activate CS
+
+CS -> DB : SELECT * FROM CartItems WHERE cart_id = ...
+activate DB
+DB --> CS : cartItems[]
+deactivate DB
+
+CS --> OS : cartItems[]
+deactivate CS
+
+OS -> PS : calculateTotal(cartItems[])
+activate PS
+PS --> OS : success
+deactivate PS
+
+OS -> DB : INSERT INTO Orders(user_id, status, total) VALUES (..., 'pending', ...)
+activate DB
+DB --> OS : newOrder(order_id)
+deactivate DB
+
+alt Payment success
+OS -> PayS : processPayment(payment_details, totalAmount)
+activate PayS
+
+PayS -> DB : INSERT INTO Payments(order_id, amount, status, transaction_id) VALUES (..., 'success', ...)
+activate DB
+DB --> PayS : paymentSuccess(transaction_id)
+deactivate DB
+
+PayS --> OS : paymentConfirmed(transaction_id)
+deactivate PayS
+
+OS -> DB : UPDATE Orders SET status = 'paid' WHERE id = order_id
+activate DB
+DB --> OS : success
+deactivate DB
+
+OS -> DS : scheduleDelivery(order_id, user_info.address)
+activate DS
+
+DS -> DB : INSERT INTO Deliveries(order_id, tracking_id, status) VALUES (..., ..., 'scheduled')
+activate DB
+DB --> DS : tracking_id
+deactivate DB
+
+DS --> OS : tracking_id
+deactivate DS
+
+OS --> Web : orderConfirmed(order_id, tracking_id)
+deactivate OS
+
+Web -> User : showOrderConfirmation(order_id)
+deactivate Web
+
+else Payment failed
+OS -> PayS : processPayment(...)
+activate PayS
+
+PayS -> DB : INSERT INTO Payments(..., status) VALUES (..., 'failed')
+activate DB
+DB --> PayS : success
+deactivate DB
+
+PayS --> OS : error_msg
+deactivate PayS
+
+OS -> DB : UPDATE Orders SET status = 'failed' WHERE id = order_id
+activate DB
+DB --> OS : success
+deactivate DB
+
+OS -> Web : orderFailed(error_msg)
+deactivate OS
+
+Web -> User : showPaymentError(error_msg)
+deactivate Web
+end
+
+== User tracks order ==
+User -> Web : trackOrder(order_id)
+activate Web
+
+Web -> DS : getDeliveryStatus(order_id)
+activate DS
+
+DS -> DB : SELECT status, eta FROM Deliveries WHERE order_id = ...
+activate DB
+DB --> DS : deliveryStatus
+deactivate DB
+
+DS --> Web : deliveryStatus
+deactivate DS
+
+Web --> User : showDeliveryStatus(deliveryStatus)
+deactivate Web
+
+== Order delivered (Webhook/Push) ==
+DS -> DB : UPDATE Deliveries SET status = 'delivered' WHERE order_id = ...
+activate DS
+activate DB
+DB --> DS : success
+deactivate DB
+
+DS -> OS : notifyOrderFulfilled(order_id)
+activate OS
+
+OS -> DB : UPDATE Orders SET status = 'complete' WHERE id = order_id
+activate DB
+DB --> OS : success
+deactivate DB
+
+OS --> DS : notify
+deactivate OS
+
+DS -> Web : pushNotify(user_id, "Order Delivered")
+activate Web
+
+Web --> User : orderDeliveredNotification(order_id)
+deactivate Web
+deactivate DS
+
+opt User leaves review (optional)
+User -> Web : leaveReview(product_id, rating=5, comment="...")
+activate Web
+
+Web -> RS : addReview(user_id, product_id, 5, "Great product!")
+activate RS
+
+RS -> DB : INSERT INTO Reviews(user_id, product_id, rating, comment) VALUES (...)
+activate DB
+DB --> RS : review_id
+deactivate DB
+
+RS --> Web : reviewConfirmation(review_id)
+deactivate RS
+
+Web -> User : showReviewConfirmation(review_id)
+deactivate Web
+end
+
+@enduml
