@@ -25,6 +25,8 @@ skinparam actor {
 }
 skinparam Arrow {
   Color Black
+  FontSize 13
+  FontColor Black
 }
 skinparam shadowing false
 
@@ -83,6 +85,7 @@ Cust --> UC_Checkout
 Cust --> UC_Wishlist
 Cust --> UC_Track
 Cust --> UC_Review
+Cust --> UC_Pay
 
 Admin --> UC_AdminUsers
 Admin --> UC_AdminProducts
@@ -98,21 +101,21 @@ Sup --> UC_SupRefund
 Sup --> UC_SupCancel
 Sup --> UC_SupHelp
 
-' --- Includes and Extends ---
+' --- Relationships ---
+
 UC_Browse ..> UC_Filter : <<include>>
 UC_Search ..> UC_Filter : <<include>>
-UC_View ..> UC_AddCart : <<include>>
 
 UC_Checkout ..> UC_SelectDelivery : <<include>>
 UC_Checkout ..> UC_Discount : <<include>>
-UC_Checkout ..> UC_Pay : <<include>>
+UC_Checkout ..> UC_Pay : <<include>>   
 
 UC_Track ..> UC_MgrUpdate : <<use>>
 
-UC_Review ..> UC_Pay : <<extend>>
-
 UC_MgrConfirm ..> UC_MgrPrepare : <<include>>
+
 UC_SupRefund ..> UC_Pay : <<extend>>
+
 UC_SupCancel ..> UC_Checkout : <<extend>>
 
 @enduml
