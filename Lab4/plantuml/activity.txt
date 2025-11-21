@@ -1,0 +1,68 @@
+@startuml
+skinparam style strictuml
+skinparam ConditionEndStyle hline
+skinparam SwimlaneTitleFontSize 14
+skinparam shadowing false
+
+|User|
+start
+
+' Loop: Search until stock is found
+repeat
+    :Browse & Select Product;
+
+    |App|
+    :Check Stock Availability;
+repeat while (Stock > 0?) is (no)
+-> yes;
+
+|User|
+:Add to Cart & Checkout;
+
+' Loop: Retry if payment fails
+repeat
+    |App|
+    :Initialize Order (Pending);
+
+    |PaymentService|
+    :Process Payment;
+repeat while (Payment Success?) is (no)
+-> yes;
+
+|App|
+:Update Order to 'Paid';
+:Request Delivery;
+
+|DeliveryService|
+:Schedule Delivery;
+
+|App|
+:Confirm Order to User;
+
+fork
+    |User|
+    :Track Order Status;
+fork again
+    |DeliveryService|
+    ' The 3 specific actions after confirmation
+    :Prepare Delivery;
+    :Send Order;
+    :Notify;
+end fork
+
+|App|
+:Update Status to 'Complete';
+:Send Push Notification;
+
+|User|
+:Receive Delivery Alert;
+
+if (Wants to Review?) then (yes)
+    :Submit Review;
+    |App|
+    :Save Review;
+else (no)
+endif
+
+stop
+@enduml
