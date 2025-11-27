@@ -1,0 +1,204 @@
+@startuml
+skinparam componentStyle uml2
+skinparam linetype ortho
+skinparam nodesep 45
+skinparam ranksep 50
+
+' --- STYLES ---
+skinparam component {
+  BackgroundColor White
+  BorderColor Black
+  ArrowColor #333333
+  FontSize 12
+}
+skinparam interface {
+  BackgroundColor White
+  BorderColor Black
+  FontSize 11
+}
+skinparam port {
+  BackgroundColor White
+  BorderColor Black
+}
+skinparam package {
+  BackgroundColor #FAFAFA
+  BorderColor #CCCCCC
+}
+
+' ============================================================
+' TOP LAYER: FRONTEND (Router + Pages + Stores)
+' ============================================================
+component "Web" as WebApp {
+    portout "HTTP Out" as pWebOut
+
+    package "UI Pages" {
+        component "AuthPage"
+        component "ShopPage"
+        component "CartPage"
+    }
+
+    package "State Stores" {
+        component "AuthStore"
+        component "CatalogStore"
+        component "CartStore"
+    }
+
+    component "API Adapter" as ApiClient
+
+    ' -- Wiring Frontend --
+
+    AuthPage -down-> AuthStore
+    ShopPage -down-> CatalogStore
+    CartPage -down-> CartStore
+
+    AuthStore -down-> ApiClient
+    CatalogStore -down-> ApiClient
+    CartStore -down-> ApiClient
+
+    ApiClient -down-> pWebOut
+}
+
+interface "REST API / HTTPS" as IRest
+
+' ============================================================
+' MIDDLE LAYER: BACKEND SYSTEM
+' ============================================================
+component "Backend" as Backend {
+
+    ' --- Top Boundary ---
+    portin "Ingress" as pApiIn
+    component "API Gateway" as Gateway
+    pApiIn -down-> Gateway
+
+    ' --- ROW 1: CORE MODULES ---
+    package "Core Domain" {
+        component "Identity Module" as ModAuth {
+            portin "In" as pAuthIn
+            component "Auth\nController" as AC
+            component "Auth\nService" as AS
+            component "User\nRepo" as AR
+            pAuthIn -down- AC
+            AC -down-> AS
+            AS -down-> AR
+        }
+
+        component "Catalog Module" as ModCat {
+            portin "In" as pCatIn
+            portout "StockOut" as pStockOut
+            component "Product\nController" as PC
+            component "Product\nService" as PS
+            component "Product\nRepo" as PR
+            pCatIn -down- PC
+            PC -down-> PS
+            PS -down-> PR
+            PS -right- pStockOut
+        }
+        
+        component "Marketing Module" as ModMark {
+            portin "In" as pMarkIn
+            component "Review\nController" as RC
+            component "Review\nService" as RS
+            component "Review\nRepo" as RR
+            pMarkIn -down- RC
+            RC -down-> RS
+            RS -down-> RR
+        }
+    }
+
+    ' --- ROW 2: COMMERCE MODULES ---
+    package "Commerce Domain" {
+        component "Sales Module" as ModSales {
+            portin "In" as pSalesIn
+            portout "OrchOut" as pSalesDep
+            component "Order\nController" as OC
+            component "Order\nService" as OS
+            component "Order\nRepo" as OR
+            pSalesIn -down- OC
+            OC -down-> OS
+            OS -down-> OR
+            OS -right- pSalesDep
+        }
+
+        component "Payment Module" as ModPay {
+            portin "In" as pPayIn
+            portout "GwOut" as pPayGw
+            component "Pay\nController" as PayC
+            component "Pay\nService" as PayS
+            component "Pay\nRepo" as PayR
+            pPayIn -down- PayC
+            PayC -down-> PayS
+            PayS -down-> PayR
+            PayS -right- pPayGw
+        }
+
+        component "Logistics Module" as ModSupport {
+            portin "In" as pLogIn
+            portout "ExtOut" as pLogExt
+            component "Track\nController" as TC
+            component "Delivery\nService" as DS
+            component "Delivery\nRepo" as DR
+            pLogIn -down- TC
+            TC -down-> DS
+            DS -down-> DR
+            DS -right- pLogExt
+        }
+    }
+
+    ' --- Routing Wiring ---
+    Gateway -down-> pAuthIn
+    Gateway -down-> pCatIn
+    Gateway -down-> pMarkIn
+    Gateway -down-> pSalesIn
+    Gateway -down-> pPayIn
+    Gateway -down-> pLogIn
+
+    ' --- Inter-module Wiring ---
+    pSalesDep .up.> pStockOut : Check Stock
+    pSalesDep -down-> pPayIn : Init Pay
+    pSalesDep -down-> pLogIn : Init Ship
+
+    ' --- Bottom Boundary ---
+    component "DB Pool" as DbPool
+    portout "DB Socket" as pDbOut
+    portout "PayLink" as pExtPay
+    portout "ShipLink" as pExtShip
+
+    AR --> DbPool
+    PR --> DbPool
+    RR --> DbPool
+    OR --> DbPool
+    PayR --> DbPool
+    DR --> DbPool
+
+    DbPool -down-> pDbOut
+    pPayGw -down-> pExtPay
+    pLogExt -down-> pExtShip
+}
+
+' ============================================================
+' BOTTOM LAYER: EXTERNAL SYSTEMS
+' ============================================================
+interface "JDBC" as ISQL
+interface "API (Stripe)" as IPayExt
+interface "API (DHL)" as IShipExt
+
+database "PostgreSQL" as DB
+node "Payment Provider" as ExtPayNode
+node "Logistics Provider" as ExtShipNode
+
+' ============================================================
+' ASSEMBLY
+' ============================================================
+pWebOut -down-> IRest
+IRest -down-> pApiIn
+
+pDbOut -down-> ISQL
+ISQL -down-> DB
+
+pExtPay -down-> IPayExt
+IPayExt -down-> ExtPayNode
+
+pExtShip -down-> IShipExt
+IShipExt -down-> ExtShipNode
+
+@enduml
